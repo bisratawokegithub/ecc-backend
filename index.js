@@ -13,6 +13,10 @@ const QueryBuilder = require('node-querybuilder');
 const bodyParser = require('body-parser')
 const httpServer = require('http').createServer(app);
 
+//testing serving this html by using fs module
+const fs = require('fs');
+//
+
 var nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
     port: 465,          
@@ -377,6 +381,102 @@ app.post('/createPaymentSideeffect', (req, res) => {
         });
     });
 });
+
+
+//create certificate for user who has completed all course requirements
+//this is the certificate table name
+
+let certTableName = 'tbl_certificate'
+
+app.post('/generateCertificate',(req,res) => {
+    
+    req.body.id = uuid().replace('-', '');
+
+    /*
+    first we have to create a table that holds all of the certificates
+    the relation will have the following attributes
+
+     courseName: 'string',
+
+     courseCode: 'string'
+
+     studentName : 'string',
+
+     createAt: 'TimeStamp'
+
+     additional info will be added as needed this is might not be all inclusive
+
+    */
+    
+    pool.get_connection(qb => {
+
+        qb.insert(certTableName , req.body , err => {
+
+            qb.release()
+
+            if (err) return res.send({ status: false, message: err });
+
+            res.send({ status: true, message: { id: req.body.id } });
+        
+        })
+
+
+    })
+
+
+})
+
+//request has cert id in the req body
+//return html that will be render to show the certificate
+
+//this is an example response that we are expecting to get from the database
+//using this to test the ui/ux until the database is up and running 
+
+const testResponse = {
+
+    coursename: 'Master course',
+
+    coursecode : 1234,
+
+     name : 'surfel',
+
+     Date: new Date()
+
+
+}
+app.get('/viewCertificate', (req,res) => {
+    
+    pool.get_connection(qb  => {
+
+        qb.select('*')
+            .where('id', req.body.id)
+            .get(certTableName, (err, response) => {
+                qb.release();
+                if (err) return res.send({ status: false, message: err.msg });
+                res.send(`
+        
+                    <!DOCTYPE html>
+                        <html lang="en">
+                            <head>
+                                <meta charset="UTF-8">
+                                <meta http-equiv="X-UA-Compatible" content="IE=edge">
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                <title>User certificate</title>
+                            </head>
+                            <body>
+                                ${response}
+                            </body>
+                         </html>
+        
+        
+                `)
+            });
+
+    })
+
+})
+
+
 
 app.post('/updatePaymentSideeffect', (req, res) => {
     pool.get_connection(qb => {
